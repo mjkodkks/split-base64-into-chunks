@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Test Chunk image base64</title>
+    <style>
+      #image-container {
+        margin-top: 20px;
+      }
+
+      img {
+        width: 400px;
+        height: auto;
+      }
+
+      .display-container {
+        margin-top: 20px;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Input file here</h2>
+    <input type="file" name="image-file" id="image-file" accept="image/*" />
+    <div id="image-container"></div>
+    <div class="display-container" id="display-container">
+      <h2>base64 input  <span id="lengthBase64Input">Length</span></h2>
+      <textarea class="base64" id="base64Input" cols="50" rows="7"></textarea>
+      <div id="splitDisplay"></div>
+      <h2>Try to combine</h2>
+      <div id="combileImage"></div>
+    </div>
+
+    <script>
+              const imageFile = document.getElementById('image-file');
+              const imageContainer = document.getElementById('image-container');
+              const base64Input = document.getElementById('base64Input');
+              const displayContainer = document.getElementById('display-container');
+              const lengthBase64Input = document.getElementById('lengthBase64Input');
+              const splitDisplay = document.getElementById('splitDisplay');
+              const combileImage = document.getElementById('combileImage');
+
+              imageFile.addEventListener('change', function() {
+                  const file = this.files[0];
+                  const reader = new FileReader();
+                  reset();
+
+                  reader.onload = function(e) {
+                      const img = document.createElement('img');
+                      img.src = e.target.result;
+                      const base64 = e.target.result.split(',')[1];
+                      base64Input.value = base64;
+                      imageContainer.appendChild(img);
+                      displayContainer.style.display = 'block';
+                      lengthBase64Input.innerHTML = `Length: (${base64.length})`;
+                      const myChunk = chunkBase64(base64, 5);
+                      console.log(myChunk);
+                      if (myChunk.length > 0) {
+                          splitDisplay.innerHTML += '';
+                            myChunk.forEach((chunk, index) => {
+                                splitDisplay.innerHTML += `
+                                    <div>
+                                    <label for="${index}">Length: ${chunk.length} - ${bytesToSize(calculateFileSizeFromBase64(chunk))} </label>
+                                    <textarea id="${index}">${chunk}</textarea>
+                                    </div>
+                                `;
+                            });
+                            const img = document.createElement('img');
+                            img.src = `data:image/png;base64,${myChunk.join('')}`;
+                            img.style.width = '400px';
+                            img.style.height = 'auto';
+                            combileImage.appendChild(img);
+                      }
+                  }
+
+                  reader.readAsDataURL(file);
+              });
+
+              function reset() {
+                  imageContainer.innerHTML = '';
+                  base64Input.value = '';
+                  displayContainer.style.display = 'none';
+                  lengthBase64Input.innerHTML = '';
+                  splitDisplay.innerHTML = '';
+                  combileImage.innerHTML = '';
+              }
+
+              function chunkBase64(base64, chunkSize) {
+                  let base64Length = base64.length;
+                  const chunks = [];
+                  const chunkLength = chunkSize * 1000000;
+                  let lastIndexChunk = 0;
+
+                  while (lastIndexChunk < base64Length) {
+                      console.log(lastIndexChunk);
+                      if (lastIndexChunk + chunkLength < base64Length) {
+                          const chunk = base64.substring(lastIndexChunk, lastIndexChunk + chunkLength);
+                          chunks.push(chunk);  
+                          lastIndexChunk += chunkLength;
+                      } else {
+                          chunks.push(base64.substring(lastIndexChunk, base64Length));
+                          break;
+                      }
+                  }
+                  return chunks;
+              }
+
+        function calculateFileSizeFromBase64(base64String) {
+          // Check if the input is a valid string
+          if (typeof base64String !== 'string' || base64String.length === 0) {
+              return 0;
+          }
+
+          // Count padding characters ('=')
+          const padding = (base64String.match(/=/g) || []).length;
+
+          // Calculate effective length by subtracting padding
+          const effectiveLength = base64String.length - padding;
+
+          // Estimate original size (Base64 inflates by 4/3, so reverse is 3/4)
+          const originalSize = Math.floor(effectiveLength * 0.75);
+
+          return originalSize;
+      }
+
+      function bytesToSize(bytes) {
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  if (bytes === 0) return 'n/a';
+  const i = parseInt(Math.floor(Math.log(Math.abs(bytes)) / Math.log(1024)), 10);
+  if (i === 0) return `${bytes} ${sizes[i]}`;
+  return `${(bytes / (1024 ** i)).toFixed(1)} ${sizes[i]}`;
+}
+
+    </script>
+  </body>
+</html>
